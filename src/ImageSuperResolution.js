@@ -1,39 +1,68 @@
 import React, { useState } from 'react';
 
-const ImageSuperResolution = () => {
-  const [inputImage, setInputImage] = useState(null);
-  const [outputImage, setOutputImage] = useState(null);
+function App() {
+  const [originalImage, setOriginalImage] = useState(null);
+  const [bwImage, setBwImage] = useState(null);
+  const [filenames, setFilenames] = useState([]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
     const reader = new FileReader();
 
-    reader.onload = (event) => {
-      setInputImage(event.target.result);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        setOriginalImage(img.src);
+        setBwImage(convertToBlackAndWhite(img));
+        setFilenames([file.name]);
+      };
+      img.src = e.target.result;
     };
 
     reader.readAsDataURL(file);
   };
 
-  const handleImageSuperResolution = () => {
-    // Perform image super-resolution using your pre-trained model
-    // Replace this with your own implementation
+  const convertToBlackAndWhite = (image) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.drawImage(image, 0, 0);
 
-    // Example code to display the same input image as output
-    setOutputImage(inputImage);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      data[i] = brightness; // red
+      data[i + 1] = brightness; // green
+      data[i + 2] = brightness; // blue
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL();
   };
 
   return (
     <div>
-      <h1>Image Super-Resolution</h1>
+      <h1>Image to Black and White Converter</h1>
       <input type="file" accept="image/*" onChange={handleImageUpload} />
-      <button onClick={handleImageSuperResolution}>Enhance Image</button>
-      <br />
-      {inputImage && <img src={inputImage} alt="Input" width="300" />}
-      <br />
-      {outputImage && <img src={outputImage} alt="Output" width="600" />}
+
+      {originalImage && (
+        <div>
+          <h2>Original Image: {filenames[0]}</h2>
+          <img src={originalImage} alt="Original" />
+        </div>
+      )}
+
+      {bwImage && (
+        <div>
+          <h2>Black and White Image: {filenames[0]}</h2>
+          <img src={bwImage} alt="Black and White" />
+        </div>
+      )}
     </div>
   );
-};
+}
 
-export default ImageSuperResolution;
+export default App;
