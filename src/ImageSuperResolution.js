@@ -1,68 +1,107 @@
 import React, { useState } from 'react';
+import QrReader from 'react-qr-reader';
+import { QRCode } from 'jsqr';
 
-function App() {
-  const [originalImage, setOriginalImage] = useState(null);
-  const [bwImage, setBwImage] = useState(null);
-  const [filenames, setFilenames] = useState([]);
+const App = () => {
+  const [qrData, setQrData] = useState('');
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        setOriginalImage(img.src);
-        setBwImage(convertToBlackAndWhite(img));
-        setFilenames([file.name]);
-      };
-      img.src = e.target.result;
-    };
-
-    reader.readAsDataURL(file);
+  const handleScan = (result) => {
+    if (result) {
+      setQrData(result);
+    }
   };
 
-  const convertToBlackAndWhite = (image) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    ctx.drawImage(image, 0, 0);
+  const handleError = (error) => {
+    console.error(error);
+  };
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
+  const handleImageLoad = (event) => {
+    const imageFile = event.target.files[0];
+    const reader = new FileReader();
 
-    for (let i = 0; i < data.length; i += 4) {
-      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      data[i] = brightness; // red
-      data[i + 1] = brightness; // green
-      data[i + 2] = brightness; // blue
-    }
+    reader.onload = () => {
+      const image = new Image();
+      image.src = reader.result;
 
-    ctx.putImageData(imageData, 0, 0);
-    return canvas.toDataURL();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const { width, height } = image;
+
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(image, 0, 0, width, height);
+
+        const imageData = context.getImageData(0, 0, width, height);
+        const qrCode = QRCode(imageData.data, imageData.width, imageData.height);
+
+        if (qrCode) {
+          setQrData(qrCode.data);
+        } else {
+          setQrData('No QR code found');
+        }
+      };
+    };
+
+    reader.readAsDataURL(imageFile);
   };
 
   return (
-    <div>
-      <h1>Image to Black and White Converter</h1>
-      <input type="file" accept="image/*" onChange={handleImageUpload} />
-
-      {originalImage && (
-        <div>
-          <h2>Original Image: {filenames[0]}</h2>
-          <img src={originalImage} alt="Original" />
-        </div>
-      )}
-
-      {bwImage && (
-        <div>
-          <h2>Black and White Image: {filenames[0]}</h2>
-          <img src={bwImage} alt="Black and White" />
-        </div>
-      )}
+    <div style={containerStyle}>
+      <h1>QR Code Decoder</h1>
+      <div style={scannerContainerStyle}>
+        <QrReader
+          delay={300}
+          onError={handleError}
+          onScan={handleScan}
+          style={scannerStyle}
+        />
+      </div>
+      <div style={qrDataContainerStyle}>
+        <h2>QR Code Data:</h2>
+        <p>{qrData}</p>
+      </div>
+      <div style={fileInputContainerStyle}>
+        <h2>Decode QR Code from Image:</h2>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageLoad}
+          style={fileInputStyle}
+        />
+      </div>
     </div>
   );
-}
+};
+
+const containerStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  margin: '2rem',
+};
+
+const scannerContainerStyle = {
+  width: '100%',
+  maxWidth: '400px',
+  margin: '2rem 0',
+};
+
+const scannerStyle = {
+  width: '100%',
+};
+
+const qrDataContainerStyle = {
+  margin: '2rem 0',
+  textAlign: 'center',
+};
+
+const fileInputContainerStyle = {
+  margin: '2rem 0',
+};
+
+const fileInputStyle = {
+  marginTop: '1rem',
+};
 
 export default App;
